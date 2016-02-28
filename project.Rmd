@@ -1,0 +1,88 @@
+---
+title: "Impacts of Severe Weather events in the US"
+output: html_document
+
+---
+
+#Synopsis 
+
+U.S. National Oceanic and Atmospheric Administration's (NOAA) storm database was analysed to determine its health and economics impacts. The data bettween 1950 and 2011 was used to anwser the following 2 questions. 
+
+1. What weather event causes the most impact to health.
+2. what weather event type causes the most impact to economics.
+
+We find that tornados causes the most impact both in injuries and fatalities. Economically, floods are responsible for the most about of damage.
+
+#Setup
+
+ggplot is loaded for graphing
+The data is read from its zip form and simplied by removing unnessary variables for the analysis.
+```{r}
+library(ggplot2)
+setwd("C:/Workspace/rep2")
+data=read.csv(bzfile("repdata-data-stormData.csv.bz2"), sep=",", header=T)
+data.reduced <- data.frame(EVTYPE=data$EVTYPE, FATALITIES=data$FATALITIES, INJURIES=data$INJURIES, PROPDMG=data$PROPDMG, PROPDMGEXP=data$PROPDMGEXP, CROPDMG=data$CROPDMG, CROPDMGEXP=data$CROPDMGEXP)
+```
+
+
+#Health Impact
+##Fatalities
+Fatalities are aggregated across events and ploted on a bar plot
+```{r}
+fatalities <- aggregate(FATALITIES ~ EVTYPE, data=data, sum)
+fatalities <- fatalities[order(-fatalities$FATALITIES), ][1:8, ]
+fatalities$EVTYPE <- factor(fatalities$EVTYPE, levels = fatalities$EVTYPE)
+
+ggplot(fatalities, aes(x = EVTYPE, y = FATALITIES))+ 
+    geom_bar(stat = "identity", fill = "black") +
+    ggtitle("Fatalities by top 8 Weather Events")+ 
+    xlab("Event Type") + ylab("Cases") 
+```
+Tornados caused the most amount of fatalities
+
+
+##Injuries
+Injuries are aggregated across events and ploted on a bar plot
+```{r}
+injuries <- aggregate(INJURIES ~ EVTYPE, data=data.reduced, sum)
+injuries <- injuries[order(-injuries$INJURIES), ][1:8, ]
+injuries$EVTYPE <- factor(injuries$EVTYPE, levels = injuries$EVTYPE)
+
+ggplot(injuries, aes(x = EVTYPE, y = INJURIES))+ 
+
+    geom_bar(stat = "identity", fill = "black")+ 
+    ggtitle("Injuries by top 8 Weather Events")+ 
+    xlab("Event Type") + ylab("Cases") 
+```
+Tornado caused the most amount of injuries
+
+#Economic Impact
+First the multipliers are applied to standardise the numeric units of the data
+```{r}
+#Now we numerate the muliplers to get numeric values for the damages.
+data.reduced$PROPDMGV = 0
+data.reduced[data.reduced$PROPDMGEXP == "H", ]$PROPDMGV = data.reduced[data.reduced$PROPDMGEXP == "H", ]$PROPDMG * 10^2
+data.reduced[data.reduced$PROPDMGEXP == "K", ]$PROPDMGV = data.reduced[data.reduced$PROPDMGEXP == "K", ]$PROPDMG * 10^3
+data.reduced[data.reduced$PROPDMGEXP == "M", ]$PROPDMGV = data.reduced[data.reduced$PROPDMGEXP == "M", ]$PROPDMG * 10^6
+data.reduced[data.reduced$PROPDMGEXP == "B", ]$PROPDMGV = data.reduced[data.reduced$PROPDMGEXP == "B", ]$PROPDMG * 10^9
+
+data.reduced$CROPDMGV = 0
+data.reduced[data.reduced$CROPDMGEXP == "H", ]$CROPDMGV = data.reduced[data.reduced$CROPDMGEXP == "H", ]$CROPDMG * 10^2
+data.reduced[data.reduced$CROPDMGEXP == "K", ]$CROPDMGV = data.reduced[data.reduced$CROPDMGEXP == "K", ]$CROPDMG * 10^3
+data.reduced[data.reduced$CROPDMGEXP == "M", ]$CROPDMGV = data.reduced[data.reduced$CROPDMGEXP == "M", ]$CROPDMG * 10^6
+data.reduced[data.reduced$CROPDMGEXP == "B", ]$CROPDMGV = data.reduced[data.reduced$CROPDMGEXP == "B", ]$CROPDMG * 10^9
+```
+The values of property and crop damages are combined and aggregated across events. 
+
+```{r}
+damages <- aggregate(PROPDMGV + CROPDMGV ~ EVTYPE, data=data.reduced, sum)
+names(damages) = c("EVTYPE", "TOTALDAMAGE")
+damages <- damages[order(-damages$TOTALDAMAGE), ][1:8, ]
+damages$EVTYPE <- factor(damages$EVTYPE, levels = damages$EVTYPE)
+
+ggplot(damages, aes(x = EVTYPE, y = TOTALDAMAGE))+ 
+    geom_bar(stat = "identity", fill = "black")+ 
+    ggtitle("Economics damage by top 8 Weather Events")+ 
+    xlab("Event Type") + ylab("Damages ($)") 
+```
+Flood Caused the most amount of economic damage
